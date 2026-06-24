@@ -1,0 +1,21 @@
+services:
+  graspnet_player:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: graspnet_player:latest
+    container_name: graspnet_player
+    network_mode: host
+    ipc: host
+    environment:
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - HOME=/root
+      - ROS_LOG_DIR=/tmp/roslog
+    volumes:
+      - ./src:/ros2_ws/src
+      - ./data/graspnet:/data/graspnet
+    working_dir: /ros2_ws
+    stdin_open: true
+    tty: true
+    command: /bin/bash
