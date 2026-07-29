@@ -36,7 +36,7 @@ class GraspNetPlayerNode(Node):
         self.declare_parameter('use_camera_pose', True)
         self.declare_parameter('invert_camera_pose', False)
         self.declare_parameter('use_table_frame', True)
-        self.declare_parameter('publish_rate', 1.0)
+        self.declare_parameter('hz', 1.0)
         self.declare_parameter('point_step', 2)
         self.declare_parameter('loop', True)
 
@@ -50,7 +50,7 @@ class GraspNetPlayerNode(Node):
         self.use_camera_pose = as_bool(self.get_parameter('use_camera_pose').value)
         self.invert_camera_pose = as_bool(self.get_parameter('invert_camera_pose').value)
         self.use_table_frame = as_bool(self.get_parameter('use_table_frame').value)
-        self.publish_rate = float(self.get_parameter('publish_rate').value)
+        self.hz = float(self.get_parameter('hz').value)
         self.point_step = int(self.get_parameter('point_step').value)
         self.loop = as_bool(self.get_parameter('loop').value)
 
@@ -90,7 +90,7 @@ class GraspNetPlayerNode(Node):
             10,
         )
 
-        period = 1.0 / max(self.publish_rate, 0.001)
+        period = 1.0 / max(self.hz, 0.001)
         self.timer = self.create_timer(period, self.publish_frame)
 
         self.get_logger().info(
@@ -104,6 +104,7 @@ class GraspNetPlayerNode(Node):
             f'use_camera_pose={self.use_camera_pose}, '
             f'invert_camera_pose={self.invert_camera_pose}, '
             f'use_table_frame={self.use_table_frame}, '
+            f'hz={self.hz}, '
             f'point_step={self.point_step}'
         )
 

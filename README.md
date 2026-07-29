@@ -52,10 +52,16 @@ ros2 launch graspnet_ros2 play_scene.launch.py scene_id:=3 camera:=kinect ann_id
 - `use_table_frame`: `cam0_wrt_table` を合成するかどうか
 - `ann_id`: 1 枚だけ再生するフレーム番号
 - `loop`: 最後のフレームまで行ったら先頭に戻るかどうか
-- `publish_rate`: 再生周波数
+- `hz`: 再生周波数
 - `point_step`: PointCloud の間引き幅
 
 `ann_id` は再生開始フレームです。scene 内のフレームを順番に流し、`loop:=true` なら最後まで行ったら最初に戻ります。
+
+速度を変えるときは `hz` を指定します。
+
+```bash
+ros2 launch graspnet_ros2 play_scene.launch.py scene_id:=3 camera:=realsense ann_id:=0 hz:=2.0
+```
 
 ## Topic
 

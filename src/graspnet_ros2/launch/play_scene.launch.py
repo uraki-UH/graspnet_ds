@@ -57,7 +57,7 @@ def generate_launch_description():
             description='Whether to compose the per-frame pose with cam0_wrt_table',
         ),
         DeclareLaunchArgument(
-            'publish_rate',
+            'hz',
             default_value='1.0',
             description='Publish frequency in Hz',
         ),
@@ -87,7 +87,7 @@ def generate_launch_description():
                 'use_camera_pose': LaunchConfiguration('use_camera_pose'),
                 'invert_camera_pose': LaunchConfiguration('invert_camera_pose'),
                 'use_table_frame': LaunchConfiguration('use_table_frame'),
-                'publish_rate': LaunchConfiguration('publish_rate'),
+                'hz': LaunchConfiguration('hz'),
                 'point_step': LaunchConfiguration('point_step'),
                 'loop': LaunchConfiguration('loop'),
             }],
