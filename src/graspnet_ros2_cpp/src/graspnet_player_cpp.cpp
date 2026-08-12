@@ -592,7 +592,7 @@ private:
   }
 
   std::vector<PointXYZRGB> make_pointcloud(
-    const cv::Mat & rgb, const cv::Mat & depth, const cv::Matx33d & cam_k, const cv::Matx44d * camera_pose)
+    const cv::Mat & bgr, const cv::Mat & depth, const cv::Matx33d & cam_k, const cv::Matx44d * camera_pose)
   {
     const float fx = static_cast<float>(cam_k(0, 0));
     const float fy = static_cast<float>(cam_k(1, 1));
@@ -607,7 +607,7 @@ private:
 
     for (int v = 0; v < height; v += point_step_) {
       const uint16_t * depth_row = depth.ptr<uint16_t>(v);
-      const cv::Vec3b * rgb_row = rgb.ptr<cv::Vec3b>(v);
+      const cv::Vec3b * bgr_row = bgr.ptr<cv::Vec3b>(v);
       for (int u = 0; u < width; u += point_step_) {
         const uint16_t z_mm = depth_row[u];
         if (z_mm == 0) {
@@ -627,9 +627,9 @@ private:
           const float world_z = static_cast<float>((*camera_pose)(2, 0) * cam_x + (*camera_pose)(2, 1) * cam_y + (*camera_pose)(2, 2) * cam_z + (*camera_pose)(2, 3));
           x = world_x;
           y = world_y;
-          points.push_back(PointXYZRGB{x, y, world_z, pack_rgb(rgb_row[u])});
+          points.push_back(PointXYZRGB{x, y, world_z, pack_rgb(bgr_row[u])});
         } else {
-          points.push_back(PointXYZRGB{x, y, z, pack_rgb(rgb_row[u])});
+          points.push_back(PointXYZRGB{x, y, z, pack_rgb(bgr_row[u])});
         }
       }
     }
@@ -701,9 +701,6 @@ private:
       return;
     }
 
-    cv::Mat rgb;
-    cv::cvtColor(rgb_bgr, rgb, cv::COLOR_BGR2RGB);
-
     cv::Mat depth = cv::imread(depth_path, cv::IMREAD_UNCHANGED);
     if (depth.empty()) {
       RCLCPP_ERROR(get_logger(), "Failed to read depth image: %s", depth_path.c_str());
@@ -724,7 +721,7 @@ private:
       camera_pose_ptr = &camera_pose;
     }
 
-    const std::vector<PointXYZRGB> points = make_pointcloud(rgb, depth, cam_k, camera_pose_ptr);
+    const std::vector<PointXYZRGB> points = make_pointcloud(rgb_bgr, depth, cam_k, camera_pose_ptr);
 
     std_msgs::msg::Header header;
     header.stamp = now();
