@@ -1,6 +1,6 @@
 # GraspNet ROS2 Player
 
-GraspNet データセットの `scene_id` を ROS2 で再生するための小さなプレイヤーです。
+GraspNet データセットの `scene_id` を ROS2 で再生するためのプレイヤーです。
 
 ## Docker 起動
 
@@ -25,18 +25,22 @@ source install/setup.bash
 ros2 launch graspnet_ros2 play_scene.launch.py scene_id:=3 camera:=realsense ann_id:=0
 ```
 
-上下が逆に見える場合は、まずこれを試してください。
-
-```bash
-ros2 launch graspnet_ros2 play_scene.launch.py scene_id:=3 camera:=realsense ann_id:=0 invert_camera_pose:=true
-```
-
-まだ平面が変なら、`use_table_frame:=true` のまま `invert_camera_pose` を切り替えてください。
-
 Kinect 側のデータを使う場合は `camera:=kinect` にします。
 
 ```bash
 ros2 launch graspnet_ros2 play_scene.launch.py scene_id:=3 camera:=kinect ann_id:=0
+```
+
+指定したフレーム範囲だけをループ再生したい場合は `start` と `end` を使います。
+
+```bash
+ros2 launch graspnet_ros2 play_scene.launch.py scene_id:=3 camera:=realsense start:=10 end:=20 hz:=2.0
+```
+
+1 フレームだけを繰り返したい場合は、開始と終了を同じ値にします。
+
+```bash
+ros2 launch graspnet_ros2 play_scene.launch.py scene_id:=3 camera:=realsense start:=15 end:=15 hz:=2.0
 ```
 
 ## パラメータ
@@ -45,6 +49,8 @@ ros2 launch graspnet_ros2 play_scene.launch.py scene_id:=3 camera:=kinect ann_id
 - `split`: データ分割。既定は `train_1`
 - `scene_id`: 再生したい scene 番号
 - `camera`: `realsense` または `kinect`
+- `start`: 再生開始フレーム。`-1` で全フレーム
+- `end`: 再生終了フレーム。`-1` で全フレーム
 - `frame_id`: 画像系の frame id
 - `pointcloud_frame_id`: 点群の出力 frame id
 - `use_camera_pose`: フレームごとの pose を使うかどうか
@@ -55,7 +61,9 @@ ros2 launch graspnet_ros2 play_scene.launch.py scene_id:=3 camera:=kinect ann_id
 - `hz`: 再生周波数
 - `point_step`: PointCloud の間引き幅
 
-`ann_id` は再生開始フレームです。scene 内のフレームを順番に流し、`loop:=true` なら最後まで行ったら最初に戻ります。
+`ann_id` は範囲再生を使わない場合の開始フレームです。scene 内のフレームを順番に流し、`loop:=true` なら最後まで行ったら最初に戻ります。
+
+旧名の `frame_start` / `frame_end` も互換用にまだ受け付けます。
 
 速度を変えるときは `hz` を指定します。
 

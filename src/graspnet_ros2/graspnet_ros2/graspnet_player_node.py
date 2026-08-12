@@ -31,6 +31,10 @@ class GraspNetPlayerNode(Node):
         self.declare_parameter('scene_id', 0)
         self.declare_parameter('camera', 'realsense')
         self.declare_parameter('ann_id', 0)
+        self.declare_parameter('start', -1)
+        self.declare_parameter('end', -1)
+        self.declare_parameter('frame_start', -1)
+        self.declare_parameter('frame_end', -1)
         self.declare_parameter('frame_id', 'camera_color_optical_frame')
         self.declare_parameter('pointcloud_frame_id', 'graspnet_table')
         self.declare_parameter('use_camera_pose', True)
@@ -45,6 +49,10 @@ class GraspNetPlayerNode(Node):
         self.scene_id = int(self.get_parameter('scene_id').value)
         self.camera = self.get_parameter('camera').value
         self.ann_id = int(self.get_parameter('ann_id').value)
+        self.start = int(self.get_parameter('start').value)
+        self.end = int(self.get_parameter('end').value)
+        self.frame_start = int(self.get_parameter('frame_start').value)
+        self.frame_end = int(self.get_parameter('frame_end').value)
         self.frame_id = self.get_parameter('frame_id').value
         self.pointcloud_frame_id = self.get_parameter('pointcloud_frame_id').value
         self.use_camera_pose = as_bool(self.get_parameter('use_camera_pose').value)
@@ -63,9 +71,10 @@ class GraspNetPlayerNode(Node):
             raise FileNotFoundError(
                 f'No frames found for scene {self.scene_id:04d} under {self.root}'
             )
+        self.play_frame_ids = self.select_playback_frame_ids(self.frame_ids)
 
-        if self.ann_id in self.frame_ids:
-            self.current_index = self.frame_ids.index(self.ann_id)
+        if self.ann_id in self.play_frame_ids:
+            self.current_index = self.play_frame_ids.index(self.ann_id)
         else:
             self.current_index = 0
 
@@ -101,6 +110,11 @@ class GraspNetPlayerNode(Node):
             f'camera={self.camera}, '
             f'ann_id={self.ann_id}, '
             f'frame_count={len(self.frame_ids)}, '
+            f'play_frame_count={len(self.play_frame_ids)}, '
+            f'start={self.start}, '
+            f'end={self.end}, '
+            f'frame_start={self.frame_start}, '
+            f'frame_end={self.frame_end}, '
             f'use_camera_pose={self.use_camera_pose}, '
             f'invert_camera_pose={self.invert_camera_pose}, '
             f'use_table_frame={self.use_table_frame}, '
@@ -174,6 +188,34 @@ class GraspNetPlayerNode(Node):
         self.poses_path = poses_path
         self.cam0_wrt_table_path = cam0_wrt_table_path
         return frame_ids
+
+    def select_playback_frame_ids(self, frame_ids):
+        if not frame_ids:
+            return []
+
+        start = self.start if self.start >= 0 else self.frame_start
+        end = self.end if self.end >= 0 else self.frame_end
+
+        if start < 0 and end < 0:
+            return frame_ids
+
+        if start < 0:
+            start = frame_ids[0]
+        if end < 0:
+            end = frame_ids[-1]
+        if start > end:
+            self.get_logger().warn(
+                f'start ({start}) is greater than end ({end}); swapping them'
+            )
+            start, end = end, start
+
+        playback = [fid for fid in frame_ids if start <= fid <= end]
+        if not playback:
+            raise FileNotFoundError(
+                f'No frames found in requested playback range [{start}, {end}] '
+                f'for scene {self.scene_id:04d}'
+            )
+        return playback
 
     def get_paths(self, ann_id):
         rgb_path = os.path.join(self.base_dir, 'rgb', f'{ann_id:04d}.png')
@@ -312,7 +354,7 @@ class GraspNetPlayerNode(Node):
         return pc2.create_cloud(header, fields, points)
 
     def publish_frame(self):
-        ann_id = self.frame_ids[self.current_index]
+        ann_id = self.play_frame_ids[self.current_index]
         try:
             rgb, depth, camK = self.load_frame(ann_id)
         except Exception as e:
@@ -349,7 +391,7 @@ class GraspNetPlayerNode(Node):
         self.points_pub.publish(points_msg)
 
         self.current_index += 1
-        if self.current_index >= len(self.frame_ids):
+        if self.current_index >= len(self.play_frame_ids):
             if self.loop:
                 self.current_index = 0
             else:

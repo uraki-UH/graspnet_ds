@@ -32,6 +32,16 @@ def generate_launch_description():
             description='Annotation/frame index to publish',
         ),
         DeclareLaunchArgument(
+            'start',
+            default_value='-1',
+            description='First frame id in playback range, or -1 for full scene',
+        ),
+        DeclareLaunchArgument(
+            'end',
+            default_value='-1',
+            description='Last frame id in playback range, or -1 for full scene',
+        ),
+        DeclareLaunchArgument(
             'frame_id',
             default_value='camera_color_optical_frame',
             description='ROS frame_id',
@@ -82,6 +92,8 @@ def generate_launch_description():
                 'scene_id': LaunchConfiguration('scene_id'),
                 'camera': LaunchConfiguration('camera'),
                 'ann_id': LaunchConfiguration('ann_id'),
+                'start': LaunchConfiguration('start'),
+                'end': LaunchConfiguration('end'),
                 'frame_id': LaunchConfiguration('frame_id'),
                 'pointcloud_frame_id': LaunchConfiguration('pointcloud_frame_id'),
                 'use_camera_pose': LaunchConfiguration('use_camera_pose'),
