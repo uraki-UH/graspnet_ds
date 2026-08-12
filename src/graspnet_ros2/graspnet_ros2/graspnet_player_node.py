@@ -33,8 +33,6 @@ class GraspNetPlayerNode(Node):
         self.declare_parameter('ann_id', 0)
         self.declare_parameter('start', -1)
         self.declare_parameter('end', -1)
-        self.declare_parameter('frame_start', -1)
-        self.declare_parameter('frame_end', -1)
         self.declare_parameter('frame_id', 'camera_color_optical_frame')
         self.declare_parameter('pointcloud_frame_id', 'graspnet_table')
         self.declare_parameter('use_camera_pose', True)
@@ -43,6 +41,9 @@ class GraspNetPlayerNode(Node):
         self.declare_parameter('hz', 1.0)
         self.declare_parameter('point_step', 2)
         self.declare_parameter('loop', True)
+        self.declare_parameter('publish_rgb', False)
+        self.declare_parameter('publish_depth', False)
+        self.declare_parameter('publish_camera_info', False)
 
         self.root = self.get_parameter('root').value
         self.split = self.get_parameter('split').value
@@ -51,8 +52,6 @@ class GraspNetPlayerNode(Node):
         self.ann_id = int(self.get_parameter('ann_id').value)
         self.start = int(self.get_parameter('start').value)
         self.end = int(self.get_parameter('end').value)
-        self.frame_start = int(self.get_parameter('frame_start').value)
-        self.frame_end = int(self.get_parameter('frame_end').value)
         self.frame_id = self.get_parameter('frame_id').value
         self.pointcloud_frame_id = self.get_parameter('pointcloud_frame_id').value
         self.use_camera_pose = as_bool(self.get_parameter('use_camera_pose').value)
@@ -61,6 +60,9 @@ class GraspNetPlayerNode(Node):
         self.hz = float(self.get_parameter('hz').value)
         self.point_step = int(self.get_parameter('point_step').value)
         self.loop = as_bool(self.get_parameter('loop').value)
+        self.publish_rgb = as_bool(self.get_parameter('publish_rgb').value)
+        self.publish_depth = as_bool(self.get_parameter('publish_depth').value)
+        self.publish_camera_info = as_bool(self.get_parameter('publish_camera_info').value)
 
         self.bridge = CvBridge()
         self.camK = None
@@ -78,21 +80,27 @@ class GraspNetPlayerNode(Node):
         else:
             self.current_index = 0
 
-        self.rgb_pub = self.create_publisher(
-            Image,
-            '/camera/camera/color/image_raw',
-            10,
-        )
-        self.depth_pub = self.create_publisher(
-            Image,
-            '/camera/camera/aligned_depth_to_color/image_raw',
-            10,
-        )
-        self.camera_info_pub = self.create_publisher(
-            CameraInfo,
-            '/camera/camera/color/camera_info',
-            10,
-        )
+        self.rgb_pub = None
+        if self.publish_rgb:
+            self.rgb_pub = self.create_publisher(
+                Image,
+                '/camera/camera/color/image_raw',
+                10,
+            )
+        self.depth_pub = None
+        if self.publish_depth:
+            self.depth_pub = self.create_publisher(
+                Image,
+                '/camera/camera/aligned_depth_to_color/image_raw',
+                10,
+            )
+        self.camera_info_pub = None
+        if self.publish_camera_info:
+            self.camera_info_pub = self.create_publisher(
+                CameraInfo,
+                '/camera/camera/color/camera_info',
+                10,
+            )
         self.points_pub = self.create_publisher(
             PointCloud2,
             '/camera/camera/depth/color/points',
@@ -113,13 +121,14 @@ class GraspNetPlayerNode(Node):
             f'play_frame_count={len(self.play_frame_ids)}, '
             f'start={self.start}, '
             f'end={self.end}, '
-            f'frame_start={self.frame_start}, '
-            f'frame_end={self.frame_end}, '
             f'use_camera_pose={self.use_camera_pose}, '
             f'invert_camera_pose={self.invert_camera_pose}, '
             f'use_table_frame={self.use_table_frame}, '
             f'hz={self.hz}, '
-            f'point_step={self.point_step}'
+            f'point_step={self.point_step}, '
+            f'publish_rgb={self.publish_rgb}, '
+            f'publish_depth={self.publish_depth}, '
+            f'publish_camera_info={self.publish_camera_info}'
         )
 
     def get_split_dir(self):
@@ -193,8 +202,8 @@ class GraspNetPlayerNode(Node):
         if not frame_ids:
             return []
 
-        start = self.start if self.start >= 0 else self.frame_start
-        end = self.end if self.end >= 0 else self.frame_end
+        start = self.start if self.start >= 0 else 1
+        end = self.end if self.end >= 0 else 1
 
         if start < 0 and end < 0:
             return frame_ids
@@ -369,13 +378,19 @@ class GraspNetPlayerNode(Node):
 
         height, width = depth.shape
 
-        rgb_msg = self.bridge.cv2_to_imgmsg(rgb, encoding='rgb8')
-        rgb_msg.header = header
+        rgb_msg = None
+        if self.publish_rgb:
+            rgb_msg = self.bridge.cv2_to_imgmsg(rgb, encoding='rgb8')
+            rgb_msg.header = header
 
-        depth_msg = self.bridge.cv2_to_imgmsg(depth, encoding='16UC1')
-        depth_msg.header = header
+        depth_msg = None
+        if self.publish_depth:
+            depth_msg = self.bridge.cv2_to_imgmsg(depth, encoding='16UC1')
+            depth_msg.header = header
 
-        camera_info_msg = self.make_camera_info(header, width, height, camK)
+        camera_info_msg = None
+        if self.publish_camera_info:
+            camera_info_msg = self.make_camera_info(header, width, height, camK)
         camera_pose = None
         if self.use_camera_pose:
             camera_pose = self.camera_poses[ann_id]
@@ -385,9 +400,12 @@ class GraspNetPlayerNode(Node):
                 camera_pose = self.cam0_wrt_table @ camera_pose
         points_msg = self.make_pointcloud2(header, rgb, depth, camK, camera_pose)
 
-        self.rgb_pub.publish(rgb_msg)
-        self.depth_pub.publish(depth_msg)
-        self.camera_info_pub.publish(camera_info_msg)
+        if self.rgb_pub is not None:
+            self.rgb_pub.publish(rgb_msg)
+        if self.depth_pub is not None:
+            self.depth_pub.publish(depth_msg)
+        if self.camera_info_pub is not None:
+            self.camera_info_pub.publish(camera_info_msg)
         self.points_pub.publish(points_msg)
 
         self.current_index += 1

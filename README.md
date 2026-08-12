@@ -19,11 +19,13 @@ source install/setup.bash
 
 ## Scene 再生
 
-`scene_id` を指定して起動します。データは `/data/graspnet` にマウントされる前提です。
+`scene_id` を指定して起動します。データは `/data/graspnet` にマウントされる前提です。既定では C++ 版の player を使います。
 
 ```bash
 ros2 launch graspnet_ros2 play_scene.launch.py scene_id:=3 camera:=realsense ann_id:=0
 ```
+
+Python 版に戻したい場合は `player_package:=graspnet_ros2 player_executable:=graspnet_player` を付けます。
 
 Kinect 側のデータを使う場合は `camera:=kinect` にします。
 
@@ -63,7 +65,6 @@ ros2 launch graspnet_ros2 play_scene.launch.py scene_id:=3 camera:=realsense sta
 
 `ann_id` は範囲再生を使わない場合の開始フレームです。scene 内のフレームを順番に流し、`loop:=true` なら最後まで行ったら最初に戻ります。
 
-旧名の `frame_start` / `frame_end` も互換用にまだ受け付けます。
 
 速度を変えるときは `hz` を指定します。
 
@@ -73,9 +74,8 @@ ros2 launch graspnet_ros2 play_scene.launch.py scene_id:=3 camera:=realsense ann
 
 ## Topic
 
-プレイヤーは以下を publish します。
+既定では以下のみを publish します。
 
-- `/camera/camera/color/image_raw`
-- `/camera/camera/aligned_depth_to_color/image_raw`
-- `/camera/camera/color/camera_info`
 - `/camera/camera/depth/color/points`
+
+画像系の topic が必要な場合は `publish_rgb:=true`、`publish_depth:=true`、`publish_camera_info:=true` を個別に有効化してください。

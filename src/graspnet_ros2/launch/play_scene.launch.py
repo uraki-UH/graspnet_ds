@@ -81,9 +81,34 @@ def generate_launch_description():
             default_value='true',
             description='Whether to loop back to the first frame after the last one',
         ),
+        DeclareLaunchArgument(
+            'player_package',
+            default_value='graspnet_ros2_cpp',
+            description='ROS package that provides the player executable',
+        ),
+        DeclareLaunchArgument(
+            'player_executable',
+            default_value='graspnet_player_cpp',
+            description='Player executable name',
+        ),
+        DeclareLaunchArgument(
+            'publish_rgb',
+            default_value='false',
+            description='Whether to publish /camera/camera/color/image_raw',
+        ),
+        DeclareLaunchArgument(
+            'publish_depth',
+            default_value='false',
+            description='Whether to publish /camera/camera/aligned_depth_to_color/image_raw',
+        ),
+        DeclareLaunchArgument(
+            'publish_camera_info',
+            default_value='false',
+            description='Whether to publish /camera/camera/color/camera_info',
+        ),
         Node(
-            package='graspnet_ros2',
-            executable='graspnet_player',
+            package=LaunchConfiguration('player_package'),
+            executable=LaunchConfiguration('player_executable'),
             name='graspnet_player',
             output='screen',
             parameters=[{
@@ -102,6 +127,9 @@ def generate_launch_description():
                 'hz': LaunchConfiguration('hz'),
                 'point_step': LaunchConfiguration('point_step'),
                 'loop': LaunchConfiguration('loop'),
+                'publish_rgb': LaunchConfiguration('publish_rgb'),
+                'publish_depth': LaunchConfiguration('publish_depth'),
+                'publish_camera_info': LaunchConfiguration('publish_camera_info'),
             }],
         ),
     ])
