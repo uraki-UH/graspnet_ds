@@ -6,6 +6,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <future>
 #include <iomanip>
 #include <ios>
 #include <iostream>
@@ -619,12 +620,15 @@ private:
         float y = (static_cast<float>(v) - cy) * z / fy;
 
         if (camera_pose != nullptr) {
-          const float cam_x = x;
-          const float cam_y = y;
-          const float cam_z = z;
-          const float world_x = static_cast<float>((*camera_pose)(0, 0) * cam_x + (*camera_pose)(0, 1) * cam_y + (*camera_pose)(0, 2) * cam_z + (*camera_pose)(0, 3));
-          const float world_y = static_cast<float>((*camera_pose)(1, 0) * cam_x + (*camera_pose)(1, 1) * cam_y + (*camera_pose)(1, 2) * cam_z + (*camera_pose)(1, 3));
-          const float world_z = static_cast<float>((*camera_pose)(2, 0) * cam_x + (*camera_pose)(2, 1) * cam_y + (*camera_pose)(2, 2) * cam_z + (*camera_pose)(2, 3));
+          const float world_x = static_cast<float>(
+            (*camera_pose)(0, 0) * x + (*camera_pose)(0, 1) * y +
+            (*camera_pose)(0, 2) * z + (*camera_pose)(0, 3));
+          const float world_y = static_cast<float>(
+            (*camera_pose)(1, 0) * x + (*camera_pose)(1, 1) * y +
+            (*camera_pose)(1, 2) * z + (*camera_pose)(1, 3));
+          const float world_z = static_cast<float>(
+            (*camera_pose)(2, 0) * x + (*camera_pose)(2, 1) * y +
+            (*camera_pose)(2, 2) * z + (*camera_pose)(2, 3));
           x = world_x;
           y = world_y;
           points.push_back(PointXYZRGB{x, y, world_z, pack_rgb(bgr_row[u])});
@@ -695,13 +699,19 @@ private:
     const std::string rgb_path = format_frame_path(base_dir_, "rgb", frame_id);
     const std::string depth_path = format_frame_path(base_dir_, "depth", frame_id);
 
-    cv::Mat rgb_bgr = cv::imread(rgb_path, cv::IMREAD_COLOR);
+    auto rgb_future = std::async(std::launch::async, [&rgb_path]() {
+        return cv::imread(rgb_path, cv::IMREAD_COLOR);
+      });
+    auto depth_future = std::async(std::launch::async, [&depth_path]() {
+        return cv::imread(depth_path, cv::IMREAD_UNCHANGED);
+      });
+    cv::Mat rgb_bgr = rgb_future.get();
+    cv::Mat depth = depth_future.get();
     if (rgb_bgr.empty()) {
       RCLCPP_ERROR(get_logger(), "Failed to read RGB image: %s", rgb_path.c_str());
       return;
     }
 
-    cv::Mat depth = cv::imread(depth_path, cv::IMREAD_UNCHANGED);
     if (depth.empty()) {
       RCLCPP_ERROR(get_logger(), "Failed to read depth image: %s", depth_path.c_str());
       return;
@@ -710,7 +720,6 @@ private:
       RCLCPP_ERROR(get_logger(), "Depth image must be CV_16UC1: %s", depth_path.c_str());
       return;
     }
-
     ensure_calibration();
 
     const cv::Matx33d cam_k = cam_k_;
